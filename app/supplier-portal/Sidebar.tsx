@@ -6,8 +6,6 @@ import {
   FileText,
   MessageSquare,
   Bell,
-  User,
-  Settings,
   ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -61,11 +59,6 @@ export function Sidebar() {
       badge: unread || undefined,
       badgeColor: "red",
     },
-  ];
-
-  const accountItems: NavItem[] = [
-    { id: "profile", label: "Company Profile", icon: <User className="w-3.5 h-3.5" /> },
-    { id: "settings", label: "Settings", icon: <Settings className="w-3.5 h-3.5" /> },
   ];
 
   const activePage = page === "bid" ? "tenders" : page;
@@ -122,27 +115,6 @@ export function Sidebar() {
           ))}
         </nav>
 
-        {/* Account section */}
-        <div className="px-4 pt-3 pb-1 text-[9.5px] font-semibold text-white/25 uppercase tracking-widest">
-          Account
-        </div>
-        <nav className="px-2 pb-2">
-          {accountItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => goTo(item.id)}
-              className={cn(
-                "w-full flex items-center gap-2 px-3 py-2 rounded-[9px] text-[13px] transition-all cursor-pointer text-left my-0.5",
-                activePage === item.id
-                  ? "bg-emerald-900/40 text-emerald-400"
-                  : "text-white/48 hover:bg-white/6 hover:text-white/82"
-              )}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
       </ScrollArea>
 
       {/* User footer */}
