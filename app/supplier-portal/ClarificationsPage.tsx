@@ -21,9 +21,14 @@ export function ClarificationsPage() {
     toggleCompose,
     setClarifAnon,
     submitQuestion,
+    openTenderClarif,
   } = useStore();
 
   const [composeText, setComposeText] = useState("");
+
+  const activeTenders = tenders.filter(
+    (x) => x.my_status === "INVITED" || x.my_status === "ACCEPTED" || x.my_status === "SUBMITTED"
+  );
 
   const t = tenders.find((x) => x.id === activeClarifTenderId);
   const allC = clarifications.filter((c) => c.tender_id === activeClarifTenderId);
@@ -67,6 +72,27 @@ export function ClarificationsPage() {
           <MessageSquare className="w-3 h-3" /> New question
         </Button>
       </div>
+
+      {/* Tender selector */}
+      {activeTenders.length > 1 && (
+        <div className="mb-4">
+          <label className="text-[11.5px] font-medium text-slate-600 mb-1 block">Tender</label>
+          <select
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[12.5px] text-slate-900 bg-white focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/15"
+            value={activeClarifTenderId}
+            onChange={(e) => openTenderClarif(parseInt(e.target.value))}
+          >
+            {activeTenders.map((x) => {
+              const cnt = clarifications.filter((c) => c.tender_id === x.id).length;
+              return (
+                <option key={x.id} value={x.id}>
+                  {x.number} — {x.title} ({cnt} Q&As)
+                </option>
+              );
+            })}
+          </select>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2.5 mb-5">
