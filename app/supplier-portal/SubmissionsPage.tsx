@@ -13,7 +13,6 @@ const typeTagClasses: Record<TenderType, string> = {
   RFI: "bg-indigo-50 text-indigo-700",
   RFP: "bg-emerald-50 text-emerald-700",
   RFQ: "bg-amber-50 text-amber-700",
-  RFT: "bg-red-50 text-red-700",
 };
 
 function TypeTag({ type }: { type: TenderType }) {
@@ -87,7 +86,7 @@ function SubmittedCard({ t, dimmed }: { t: Tender; dimmed?: boolean }) {
             ) : (
               <>
                 <Badge variant="submitted">Submitted</Badge>
-                {t.two_envelope && <Badge variant="published">Two-envelope</Badge>}
+                {t.two_envelope && t.type !== "RFI" && <Badge variant="published">Two-envelope</Badge>}
               </>
             )}
           </div>

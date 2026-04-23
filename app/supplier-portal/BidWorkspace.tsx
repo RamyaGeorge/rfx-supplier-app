@@ -22,7 +22,6 @@ const typeTagClasses: Record<TenderType, string> = {
   RFI: "bg-indigo-50 text-indigo-700",
   RFP: "bg-emerald-50 text-emerald-700",
   RFQ: "bg-amber-50 text-amber-700",
-  RFT: "bg-red-50 text-red-700",
 };
 
 function TypeTag({ type }: { type: TenderType }) {
@@ -33,7 +32,8 @@ function TypeTag({ type }: { type: TenderType }) {
   );
 }
 
-const STEPS = ["Documents", "Questionnaire", "Line items", "Review & submit"];
+const ALL_STEPS = ["Documents", "Questionnaire", "Line items", "Review & submit"];
+const RFI_STEPS = ["Documents", "Questionnaire", "Review & submit"];
 
 /* ─── Award screen ─────────────────────────────────────────── */
 function AwardScreen() {
@@ -502,8 +502,9 @@ function ReviewStep() {
   const { activeTender, ackedDocs, bidItems, selectedOptions, uploadedFiles, goTo } = useStore();
   const t = activeTender;
 
+  const isRFI = t.type === "RFI";
   const allAcked = tenderDocuments.filter((d) => d.ack_req).every((d) => ackedDocs[d.name]);
-  const allPriced = bidItems.every((it) => parseFloat(it.unit_price || "0") > 0);
+  const allPriced = isRFI || bidItems.every((it) => parseFloat(it.unit_price || "0") > 0);
   const answeredQ = Object.keys(uploadedFiles).length + Object.keys(selectedOptions).length + 1;
   const totalQ = qSections.reduce((s, sec) => s + sec.questions.length, 0);
   const compPct = Math.round((answeredQ / totalQ) * 100);
@@ -512,8 +513,7 @@ function ReviewStep() {
   const checks = [
     { ok: allAcked, msg: allAcked ? "All required documents acknowledged" : "NDA and Terms & Conditions must be acknowledged" },
     { ok: compPct >= 80, msg: compPct >= 80 ? `Questionnaire ${compPct}% complete` : `Questionnaire incomplete — mandatory questions unanswered (${compPct}%)` },
-    { ok: allPriced, msg: allPriced ? `All ${bidItems.length} line items priced` : "One or more line items not priced" },
-    { ok: true, msg: "Bid bond reference provided" },
+    ...(!isRFI ? [{ ok: allPriced, msg: allPriced ? `All ${bidItems.length} line items priced` : "One or more line items not priced" }] : []),
     { ok: true, msg: "Bid validity set (90 days)" },
   ];
   const allOk = checks.every((c) => c.ok);
@@ -533,15 +533,17 @@ function ReviewStep() {
           </div>
         )}
 
-        <CardTitle className="mb-3">Bid summary</CardTitle>
+        <CardTitle className="mb-3">Response summary</CardTitle>
         <div className="border border-slate-100 rounded-lg overflow-hidden mb-5">
           {[
             ["Tender", t.title],
             ["Event number", t.number],
-            ["Total bid amount", fmtAmount(totalBid)],
-            ["Line items", `${bidItems.length} items`],
+            ...(!isRFI ? [
+              ["Total bid amount", fmtAmount(totalBid)],
+              ["Line items", `${bidItems.length} items`],
+              ["Financial envelope", "Sealed until 15 Oct 2025"],
+            ] : []),
             ["Bid validity", "90 days"],
-            ["Financial envelope", "Sealed until 15 Oct 2025"],
             ["Questionnaire", `${compPct}% complete`],
           ].map(([k, v]) => (
             <div key={k} className="flex px-3.5 py-2.5 border-b border-slate-100 last:border-0 text-[12.5px]">
@@ -592,6 +594,9 @@ export function BidWorkspace() {
     return <AwardScreen />;
   }
 
+  const isRFI = t.type === "RFI";
+  const STEPS = isRFI ? RFI_STEPS : ALL_STEPS;
+
   const totalBid = bidItems.reduce((s, it) => s + parseFloat(it.unit_price || "0") * it.quantity, 0);
   const tClarifs = clarifications.filter((c) => c.tender_id === t.id);
   const ndaAcked = ackedDocs["NDA_Agreement.pdf"];
@@ -633,7 +638,7 @@ export function BidWorkspace() {
           </div>
 
           <div className="flex flex-wrap gap-4 text-[11.5px] text-slate-600">
-            {t.two_envelope && (
+            {t.two_envelope && t.type !== "RFI" && (
               <span className="flex items-center gap-1">
                 <Lock className="w-3 h-3" /> Two-envelope — Financial opens 15 Oct 2025
               </span>
@@ -708,8 +713,8 @@ export function BidWorkspace() {
         <div className="pb-6">
           {bidStep === 0 && <DocsStep />}
           {bidStep === 1 && <QuestionnaireStep />}
-          {bidStep === 2 && <LineItemsStep />}
-          {bidStep === 3 && <ReviewStep />}
+          {!isRFI && bidStep === 2 && <LineItemsStep />}
+          {(isRFI ? bidStep === 2 : bidStep === 3) && <ReviewStep />}
         </div>
       </div>
 
@@ -723,7 +728,7 @@ export function BidWorkspace() {
           {bidStep > 0 && (
             <Button onClick={() => setBidStep(bidStep - 1)}>← Previous</Button>
           )}
-          {bidStep < 3 ? (
+          {bidStep < STEPS.length - 1 ? (
             <Button variant="primary" onClick={() => setBidStep(bidStep + 1)}>
               Next →
             </Button>
@@ -740,8 +745,9 @@ function SubmitButton({ compPct }: { compPct: number }) {
   const { activeTender, ackedDocs, bidItems, goTo } = useStore();
   const [submitted, setSubmitted] = React.useState(false);
 
+  const isRFI = activeTender.type === "RFI";
   const allAcked = tenderDocuments.filter((d) => d.ack_req).every((d) => ackedDocs[d.name]);
-  const allPriced = bidItems.every((it) => parseFloat(it.unit_price || "0") > 0);
+  const allPriced = isRFI || bidItems.every((it) => parseFloat(it.unit_price || "0") > 0);
 
   const handleSubmit = () => {
     setSubmitted(true);
@@ -752,14 +758,14 @@ function SubmitButton({ compPct }: { compPct: number }) {
   if (submitted) {
     return (
       <div className="flex items-center gap-2 text-[12px] text-emerald-700 font-medium">
-        <CheckCircle className="w-4 h-4" /> Bid submitted — ref: RFT-2025-0018-SUB-004
+        <CheckCircle className="w-4 h-4" /> Bid submitted — ref: RFP-2025-0018-SUB-004
       </div>
     );
   }
 
   return (
     <Button variant="primary" onClick={handleSubmit}>
-      Submit bid
+      {isRFI ? "Submit response" : "Submit bid"}
     </Button>
   );
 }

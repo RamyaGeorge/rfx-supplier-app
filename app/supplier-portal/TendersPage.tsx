@@ -34,7 +34,6 @@ const typeTagClasses: Record<TenderType, string> = {
   RFI: "bg-indigo-50 text-indigo-700",
   RFP: "bg-emerald-50 text-emerald-700",
   RFQ: "bg-amber-50 text-amber-700",
-  RFT: "bg-red-50 text-red-700",
 };
 
 function TypeTag({ type }: { type: TenderType }) {
@@ -135,7 +134,7 @@ function TenderCard({ tender }: { tender: Tender }) {
               <StarIcon /> Bid bond req.
             </span>
           )}
-          {tender.two_envelope && (
+          {tender.two_envelope && tender.type !== "RFI" && (
             <span className="flex items-center gap-1 text-blue-600">
               <EnvelopeIcon /> Two-envelope
             </span>

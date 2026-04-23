@@ -1,6 +1,6 @@
 export type TenderStatus = "INVITED" | "ACCEPTED" | "SUBMITTED" | "WITHDRAWN" | "DISQUALIFIED";
 export type EventStatus = "PUBLISHED" | "CLOSED" | "AWARDED";
-export type TenderType = "RFI" | "RFP" | "RFQ" | "RFT";
+export type TenderType = "RFI" | "RFP" | "RFQ";
 
 export interface Tender {
   id: number;
@@ -95,8 +95,8 @@ export const initialTenders: Tender[] = [
   {
     id: 1,
     title: "Annual Decorative Lighting Contract – Phase 2",
-    number: "RFT-2025-0018",
-    type: "RFT",
+    number: "RFP-2025-0018",
+    type: "RFP",
     buyer: "ACME Corp",
     status: "PUBLISHED",
     deadline: "30 Sep 2025",
@@ -157,10 +157,31 @@ export const initialTenders: Tender[] = [
     bid_amount: 795000,
   },
   {
+    id: 5,
+    title: "Smart Building Infrastructure Assessment",
+    number: "RFI-2025-0021",
+    type: "RFI",
+    buyer: "GreenBuild Corp",
+    status: "PUBLISHED",
+    deadline: "20 Oct 2025",
+    clarDeadline: "10 Oct 2025",
+    my_status: "INVITED",
+    estimated: "₹35,00,000",
+    daysLeft: 20,
+    nda_required: false,
+    nda_signed: false,
+    intent_req: false,
+    intent_declared: false,
+    bid_bond_req: false,
+    two_envelope: false,
+    urgent: false,
+    progress: 0,
+  },
+  {
     id: 4,
     title: "Campus Lighting Overhaul",
-    number: "RFT-2025-0005",
-    type: "RFT",
+    number: "RFI-2025-0005",
+    type: "RFI",
     buyer: "NovaTech Infra",
     status: "AWARDED",
     deadline: "10 Mar 2025",
@@ -376,7 +397,7 @@ export const initialNotifications: Notification[] = [
   {
     id: 1,
     key: "NEGO_ROUND_OPENED",
-    text: "Round 2 of price negotiation for RFT-2025-0018 is now open. Deadline: 17 Oct 2025.",
+    text: "Round 2 of price negotiation for RFP-2025-0018 is now open. Deadline: 17 Oct 2025.",
     time: "2 hours ago",
     read: false,
     tender_id: 1,
@@ -384,7 +405,7 @@ export const initialNotifications: Notification[] = [
   {
     id: 2,
     key: "EVT_CORRIGENDUM",
-    text: "Corrigendum issued for RFT-2025-0018 – Technical specification updated. Please review the latest documents.",
+    text: "Corrigendum issued for RFP-2025-0018 – Technical specification updated. Please review the latest documents.",
     time: "1 day ago",
     read: false,
     tender_id: 1,
@@ -392,7 +413,7 @@ export const initialNotifications: Notification[] = [
   {
     id: 3,
     key: "CLARIF_PUBLISHED",
-    text: "New Q&A published for RFT-2025-0018. 2 questions have been answered by the buyer.",
+    text: "New Q&A published for RFP-2025-0018. 2 questions have been answered by the buyer.",
     time: "3 days ago",
     read: false,
     tender_id: 1,
@@ -408,7 +429,7 @@ export const initialNotifications: Notification[] = [
   {
     id: 5,
     key: "SUP_AWARDED",
-    text: "Congratulations! ABC Lighting Co. has been awarded Campus Lighting Overhaul (RFT-2025-0005).",
+    text: "Congratulations! ABC Lighting Co. has been awarded Campus Lighting Overhaul (RFI-2025-0005).",
     time: "2 months ago",
     read: true,
     tender_id: 4,
