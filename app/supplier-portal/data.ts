@@ -180,8 +180,8 @@ export const initialTenders: Tender[] = [
   {
     id: 4,
     title: "Campus Lighting Overhaul",
-    number: "RFI-2025-0005",
-    type: "RFI",
+    number: "RFP-2025-0005",
+    type: "RFP",
     buyer: "NovaTech Infra",
     status: "AWARDED",
     deadline: "10 Mar 2025",
@@ -429,7 +429,7 @@ export const initialNotifications: Notification[] = [
   {
     id: 5,
     key: "SUP_AWARDED",
-    text: "Congratulations! ABC Lighting Co. has been awarded Campus Lighting Overhaul (RFI-2025-0005).",
+    text: "Congratulations! ABC Lighting Co. has been awarded Campus Lighting Overhaul (RFP-2025-0005).",
     time: "2 months ago",
     read: true,
     tender_id: 4,

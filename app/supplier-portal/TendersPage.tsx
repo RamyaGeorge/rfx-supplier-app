@@ -50,7 +50,7 @@ function TypeTag({ type }: { type: TenderType }) {
 }
 
 function StatusBadge({ tender }: { tender: Tender }) {
-  if (tender.awarded_to_us) {
+  if (tender.awarded_to_us && tender.type !== "RFI") {
     return (
       <Badge variant="awarded">
         <CheckCircle className="w-2.5 h-2.5" /> Awarded
@@ -73,7 +73,7 @@ function TenderCard({ tender }: { tender: Tender }) {
   const tClarifs = clarifications.filter((c) => c.tender_id === tender.id);
   const pendingQ = tClarifs.filter((c) => c.status === "PENDING" && c.isMine).length;
 
-  const isAwarded = !!tender.awarded_to_us;
+  const isAwarded = !!tender.awarded_to_us && tender.type !== "RFI";
   const isUrgent = tender.urgent;
 
   return (
@@ -129,7 +129,7 @@ function TenderCard({ tender }: { tender: Tender }) {
           <span className="flex items-center gap-1">
             <Package className="w-2.5 h-2.5" /> Est: {tender.estimated}
           </span>
-          {tender.bid_bond_req && (
+          {tender.bid_bond_req && tender.type !== "RFI" && (
             <span className="flex items-center gap-1 text-amber-600">
               <StarIcon /> Bid bond req.
             </span>
@@ -220,7 +220,7 @@ export function TendersPage() {
     (t) => t.my_status === "INVITED" || t.my_status === "ACCEPTED"
   ).length;
   const submitted = tenders.filter((t) => t.my_status === "SUBMITTED").length;
-  const awarded = tenders.filter((t) => t.awarded_to_us).length;
+  const awarded = tenders.filter((t) => t.awarded_to_us && t.type !== "RFI").length;
 
   const stats = [
     { label: "Pending action", value: pending, color: "bg-amber-500" },

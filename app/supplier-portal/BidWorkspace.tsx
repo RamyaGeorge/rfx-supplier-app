@@ -590,7 +590,7 @@ export function BidWorkspace() {
 
   const t = activeTender;
 
-  if (t.awarded_to_us && t.status === "AWARDED") {
+  if (t.awarded_to_us && t.status === "AWARDED" && t.type !== "RFI") {
     return <AwardScreen />;
   }
 
@@ -643,7 +643,7 @@ export function BidWorkspace() {
                 <Lock className="w-3 h-3" /> Two-envelope — Financial opens 15 Oct 2025
               </span>
             )}
-            {t.bid_bond_req && (
+            {t.bid_bond_req && t.type !== "RFI" && (
               <span className="flex items-center gap-1 text-amber-600">
                 ★ Bid bond required
               </span>

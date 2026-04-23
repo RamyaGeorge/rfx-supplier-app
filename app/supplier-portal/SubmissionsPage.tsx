@@ -123,7 +123,7 @@ function SubmittedCard({ t, dimmed }: { t: Tender; dimmed?: boolean }) {
 export function SubmissionsPage() {
   const { tenders } = useStore();
   const submitted = tenders.filter((t) => t.my_status === "SUBMITTED");
-  const awarded = submitted.filter((t) => t.awarded_to_us);
+  const awarded = submitted.filter((t) => t.awarded_to_us && t.type !== "RFI");
   const pending = submitted.filter((t) => !t.awarded_to_us && t.status !== "CLOSED");
   const closed = submitted.filter((t) => !t.awarded_to_us && t.status === "CLOSED");
   const totalBidValue = submitted.reduce((s, t) => s + (t.bid_amount || 0), 0);
