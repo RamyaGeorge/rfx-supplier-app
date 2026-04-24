@@ -42,6 +42,11 @@ export interface BidItem {
   country_of_origin: string;
 }
 
+export interface QuestionCondition {
+  questionId: string;
+  matchValue: string | string[];
+}
+
 export interface QuestionOption {
   id: string;
   text: string;
@@ -51,6 +56,7 @@ export interface QuestionOption {
   weight?: number;
   hint?: string;
   options?: string[];
+  condition?: QuestionCondition;
 }
 
 export interface QSection {
@@ -265,6 +271,26 @@ export const qSections: QSection[] = [
         weight: 10,
         options: ["India (domestic)", "China", "Europe", "Other"],
       },
+      {
+        id: "q3a",
+        text: "Upload domestic factory inspection certificate",
+        type: "FILE_UPLOAD",
+        mandatory: true,
+        scored: true,
+        weight: 5,
+        hint: "Required for India-based manufacturers. Upload BIS / factory inspection report (PDF).",
+        condition: { questionId: "q3", matchValue: "India (domestic)" },
+      },
+      {
+        id: "q3b",
+        text: "Provide import duty compliance reference number",
+        type: "TEXT",
+        mandatory: true,
+        scored: true,
+        weight: 5,
+        hint: "Required for overseas manufacturers. Enter your import duty / customs compliance reference.",
+        condition: { questionId: "q3", matchValue: ["China", "Europe", "Other"] },
+      },
     ],
   },
   {
@@ -290,6 +316,26 @@ export const qSections: QSection[] = [
         weight: 8,
         hint: "",
       },
+      {
+        id: "q5a",
+        text: "Upload ISO 9001:2015 certificate",
+        type: "FILE_UPLOAD",
+        mandatory: true,
+        scored: true,
+        weight: 7,
+        hint: "Upload a valid, in-date ISO 9001:2015 certificate (PDF).",
+        condition: { questionId: "q5", matchValue: "yes" },
+      },
+      {
+        id: "q5b",
+        text: "Describe your quality management process",
+        type: "TEXT",
+        mandatory: false,
+        scored: true,
+        weight: 4,
+        hint: "Briefly describe the quality controls and processes your company follows.",
+        condition: { questionId: "q5", matchValue: "no" },
+      },
     ],
   },
   {
@@ -305,6 +351,16 @@ export const qSections: QSection[] = [
         mandatory: false,
         scored: false,
         hint: "Upload your company HSE policy (PDF).",
+      },
+      {
+        id: "q6a",
+        text: "How many HSE incidents were reported in the last 12 months?",
+        type: "NUMERIC",
+        mandatory: false,
+        scored: true,
+        weight: 6,
+        hint: "Enter 0 if none. Lower incident counts improve your HSE score.",
+        condition: { questionId: "q6", matchValue: "uploaded" },
       },
     ],
   },
