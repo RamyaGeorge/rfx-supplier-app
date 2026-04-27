@@ -17,7 +17,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useStore } from "./store";
 import { qSections, tenderDocuments, fmtAmount, TenderType, QuestionOption } from "./data";
-
+import {
+  exportQuestionnaireToExcel,
+  importQuestionnaireFromExcel,
+  exportBidMatrixToExcel,
+  importBidMatrixFromExcel,
+} from "./excel-utils";
 function isVisible(q: QuestionOption, answers: Record<string, string>, uploads: Record<string, boolean>): boolean {
   if (!q.condition) return true;
   const { questionId, matchValue } = q.condition;
@@ -174,8 +179,34 @@ function QuestionnaireStep() {
   const circumference = 2 * Math.PI * 16;
   const offset = circumference - (pct / 100) * circumference;
 
+  const allQuestions = qSections.flatMap((sec) => sec.questions);
+
+  const handleExport = async () => {
+    await exportQuestionnaireToExcel(qSections, visibleQuestions, selectedOptions);
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await importQuestionnaireFromExcel(file, allQuestions, selectOpt);
+      e.target.value = ""; // reset input
+    }
+  };
+
   return (
     <>
+      <div className="flex justify-end gap-2 mb-4">
+        <Button variant="outline" size="sm" onClick={handleExport}>
+          <Download className="w-3.5 h-3.5 mr-1" /> Export to Excel
+        </Button>
+        <label>
+          <input type="file" accept=".xlsx" className="hidden" onChange={handleImport} />
+          <Button variant="outline" size="sm" asChild>
+            <span><Upload className="w-3.5 h-3.5 mr-1" /> Import from Excel</span>
+          </Button>
+        </label>
+      </div>
+
       {/* Completion + Score bar */}
       <div className="flex items-center gap-4 bg-slate-50 border border-slate-100 rounded-lg px-4 py-3 mb-4">
         <svg className="w-9 h-9 flex-shrink-0 -rotate-90" viewBox="0 0 36 36">
@@ -370,11 +401,34 @@ function LineItemsStep() {
   const { bidItems, updateBidItem } = useStore();
   const total = bidItems.reduce((s, it) => s + parseFloat(it.unit_price || "0") * it.quantity, 0);
 
+  const handleExport = async () => {
+    await exportBidMatrixToExcel(bidItems);
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await importBidMatrixFromExcel(file, bidItems, updateBidItem);
+      e.target.value = ""; // reset input
+    }
+  };
+
   return (
     <Card>
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-4">
           <CardTitle>Line item pricing (BOQ)</CardTitle>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="w-3.5 h-3.5 mr-1" /> Export to Excel
+            </Button>
+            <label>
+              <input type="file" accept=".xlsx" className="hidden" onChange={handleImport} />
+              <Button variant="outline" size="sm" asChild>
+                <span><Upload className="w-3.5 h-3.5 mr-1" /> Import from Excel</span>
+              </Button>
+            </label>
+          </div>
         </div>
 
         <div className="flex items-start gap-2 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-lg text-[12px] text-blue-700 mb-4">

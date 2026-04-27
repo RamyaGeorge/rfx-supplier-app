@@ -62,7 +62,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({
     q3: "India (domestic)",
   });
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, boolean>>({ q1: true });
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, boolean>>({});
   const [ackedDocs, setAckedDocs] = useState<Record<string, boolean>>({});
   const [clarifications, setClarifications] = useState<Clarification[]>(initialClarifications);
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
