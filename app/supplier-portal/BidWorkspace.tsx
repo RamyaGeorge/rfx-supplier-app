@@ -108,9 +108,6 @@ function AwardScreen() {
 
 /* ─── Step 0: Documents ─────────────────────────────────────── */
 function DocsStep() {
-  const { ackedDocs, ackDoc } = useStore();
-  const allAcked = tenderDocuments.filter((d) => d.ack_req).every((d) => ackedDocs[d.name]);
-
   const docColors: Record<string, string> = {
     RFX_DOCUMENT: "bg-blue-50 text-blue-700",
     NDA: "bg-red-50 text-red-700",
@@ -121,64 +118,30 @@ function DocsStep() {
   return (
     <Card>
       <CardContent className="p-5">
-        {allAcked ? (
-          <div className="flex items-start gap-2 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[12px] text-emerald-700 mb-4">
-            <CheckCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-            All required documents acknowledged — you can proceed to the questionnaire.
-          </div>
-        ) : (
-          <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-[12px] text-amber-700 mb-4">
-            <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-            Please acknowledge the NDA and Terms & Conditions before submitting your bid.
-          </div>
-        )}
-
         <CardTitle className="mb-3">Tender documents</CardTitle>
 
         <div className="divide-y divide-slate-100">
-          {tenderDocuments.map((doc) => {
-            const acked = ackedDocs[doc.name];
-            return (
-              <div key={doc.name} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <div
-                  className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-                    docColors[doc.type] ?? "bg-slate-100 text-slate-500"
-                  )}
-                >
-                  <Download className="w-3.5 h-3.5" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-[12.5px] font-medium text-slate-900">{doc.name}</div>
-                  <div className="text-[11px] text-slate-500">
-                    {doc.type.replace(/_/g, " ")} · {doc.size}
-                  </div>
-                </div>
-                <Button size="sm" className="mr-2">
-                  <Download className="w-3 h-3" /> Download
-                </Button>
-                {doc.ack_req ? (
-                  <button
-                    onClick={() => ackDoc(doc.name)}
-                    className={cn(
-                      "flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer",
-                      acked
-                        ? "bg-emerald-50 border-emerald-300 text-emerald-700"
-                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                    )}
-                  >
-                    {acked ? (
-                      <><CheckCircle className="w-2.5 h-2.5" /> Acknowledged</>
-                    ) : (
-                      "Acknowledge"
-                    )}
-                  </button>
-                ) : (
-                  <span className="text-[11px] text-slate-300">No ack. needed</span>
+          {tenderDocuments.map((doc) => (
+            <div key={doc.name} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <div
+                className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                  docColors[doc.type] ?? "bg-slate-100 text-slate-500"
                 )}
+              >
+                <Download className="w-3.5 h-3.5" />
               </div>
-            );
-          })}
+              <div className="flex-1">
+                <div className="text-[12.5px] font-medium text-slate-900">{doc.name}</div>
+                <div className="text-[11px] text-slate-500">
+                  {doc.type.replace(/_/g, " ")} · {doc.size}
+                </div>
+              </div>
+              <Button size="sm">
+                <Download className="w-3 h-3" /> Download
+              </Button>
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>
@@ -539,11 +502,10 @@ function LineItemsStep() {
 
 /* ─── Step 3: Review & submit ──────────────────────────────── */
 function ReviewStep() {
-  const { activeTender, ackedDocs, bidItems, selectedOptions, uploadedFiles, goTo } = useStore();
+  const { activeTender, bidItems, selectedOptions, uploadedFiles, goTo } = useStore();
   const t = activeTender;
 
   const isRFI = t.type === "RFI";
-  const allAcked = tenderDocuments.filter((d) => d.ack_req).every((d) => ackedDocs[d.name]);
   const allPriced = isRFI || bidItems.every((it) => parseFloat(it.unit_price || "0") > 0);
   const totalBid = bidItems.reduce((s, it) => s + parseFloat(it.unit_price || "0") * it.quantity, 0);
 
@@ -560,7 +522,6 @@ function ReviewStep() {
   const scorePct = scoreTotal > 0 ? Math.round((scoreEarned / scoreTotal) * 100) : 0;
 
   const checks = [
-    { ok: allAcked, msg: allAcked ? "All required documents acknowledged" : "NDA and Terms & Conditions must be acknowledged" },
     { ok: compPct >= 80, msg: compPct >= 80 ? `Questionnaire ${compPct}% complete` : `Questionnaire incomplete — mandatory questions unanswered (${compPct}%)` },
     ...(!isRFI ? [{ ok: allPriced, msg: allPriced ? `All ${bidItems.length} line items priced` : "One or more line items not priced" }] : []),
     { ok: true, msg: "Bid validity set (90 days)" },
@@ -763,7 +724,6 @@ export function BidWorkspace() {
     goTo,
     openTenderClarif,
     clarifications,
-    ackedDocs,
     uploadedFiles,
     selectedOptions,
     bidItems,
@@ -780,7 +740,6 @@ export function BidWorkspace() {
 
   const totalBid = bidItems.reduce((s, it) => s + parseFloat(it.unit_price || "0") * it.quantity, 0);
   const tClarifs = clarifications.filter((c) => c.tender_id === t.id);
-  const ndaAcked = ackedDocs["NDA_Agreement.pdf"];
 
   const visibleQs = qSections.flatMap((sec) =>
     sec.questions.filter((q) => isVisible(q, selectedOptions, uploadedFiles))
@@ -841,16 +800,6 @@ export function BidWorkspace() {
             )}
           </div>
         </div>
-
-        {/* NDA gate */}
-        {t.nda_required && !ndaAcked && (
-          <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-red-50 border border-red-200 rounded-lg text-[12px] text-red-700 mb-4">
-            <Lock className="w-3.5 h-3.5 flex-shrink-0" />
-            <div>
-              <strong>NDA acknowledgement required</strong> — You must acknowledge the NDA before accessing specifications or submitting a bid.
-            </div>
-          </div>
-        )}
 
         {/* Corrigendum notice */}
         <div className="flex items-start gap-2 px-3.5 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-[12px] text-amber-700 mb-4">
@@ -928,11 +877,10 @@ export function BidWorkspace() {
 }
 
 function SubmitButton({ compPct }: { compPct: number }) {
-  const { activeTender, ackedDocs, bidItems, goTo } = useStore();
+  const { activeTender, bidItems, goTo } = useStore();
   const [submitted, setSubmitted] = React.useState(false);
 
   const isRFI = activeTender.type === "RFI";
-  const allAcked = tenderDocuments.filter((d) => d.ack_req).every((d) => ackedDocs[d.name]);
   const allPriced = isRFI || bidItems.every((it) => parseFloat(it.unit_price || "0") > 0);
 
   const handleSubmit = () => {

@@ -29,12 +29,15 @@ interface StoreState {
   clarifFilter: "ALL" | "MINE" | "ANSWERED" | "PENDING";
   clarifComposeOpen: boolean;
   clarifComposeAnonymous: boolean;
+  ndaModalTenderId: number | null;
 
   goTo: (p: Page) => void;
   openTender: (id: number) => void;
   openTenderClarif: (tenderId: number) => void;
   setBidStep: (s: number) => void;
   acceptInvite: (id: number) => void;
+  signNda: (id: number) => void;
+  dismissNdaModal: () => void;
   ackDoc: (name: string) => void;
   toggleUpload: (qid: string) => void;
   selectOpt: (qid: string, val: string) => void;
@@ -59,13 +62,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     q3: "India (domestic)",
   });
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, boolean>>({ q1: true });
-  const [ackedDocs, setAckedDocs] = useState<Record<string, boolean>>({ "NDA_Agreement.pdf": true });
+  const [ackedDocs, setAckedDocs] = useState<Record<string, boolean>>({});
   const [clarifications, setClarifications] = useState<Clarification[]>(initialClarifications);
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
   const [activeClarifTenderId, setActiveClarifTenderId] = useState(1);
   const [clarifFilter, setClarifFilterState] = useState<"ALL" | "MINE" | "ANSWERED" | "PENDING">("ALL");
   const [clarifComposeOpen, setClarifComposeOpen] = useState(false);
   const [clarifComposeAnonymous, setClarifComposeAnonymous] = useState(false);
+  const [ndaModalTenderId, setNdaModalTenderId] = useState<number | null>(null);
 
   const goTo = (p: Page) => {
     setPage(p);
@@ -89,10 +93,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const setBidStep = (s: number) => setBidStepState(s);
 
   const acceptInvite = (id: number) => {
+    const t = tenders.find((t) => t.id === id);
+    if (t && t.nda_required && !t.nda_signed) {
+      setNdaModalTenderId(id);
+      return;
+    }
     setTenders((prev) =>
       prev.map((t) => (t.id === id ? { ...t, my_status: "ACCEPTED" } : t))
     );
   };
+
+  const signNda = (id: number) => {
+    setNdaModalTenderId(null);
+    setTenders((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, nda_signed: true, my_status: "ACCEPTED" } : t))
+    );
+  };
+
+  const dismissNdaModal = () => setNdaModalTenderId(null);
 
   const ackDoc = (name: string) => {
     setAckedDocs((prev) => ({ ...prev, [name]: true }));
@@ -167,11 +185,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         clarifFilter,
         clarifComposeOpen,
         clarifComposeAnonymous,
+        ndaModalTenderId,
         goTo,
         openTender,
         openTenderClarif,
         setBidStep,
         acceptInvite,
+        signNda,
+        dismissNdaModal,
         ackDoc,
         toggleUpload,
         selectOpt,

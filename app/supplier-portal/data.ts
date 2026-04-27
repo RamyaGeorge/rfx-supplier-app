@@ -111,7 +111,7 @@ export const initialTenders: Tender[] = [
     estimated: "₹50,00,000",
     daysLeft: 13,
     nda_required: true,
-    nda_signed: true,
+    nda_signed: false,
     intent_req: true,
     intent_declared: false,
     bid_bond_req: true,

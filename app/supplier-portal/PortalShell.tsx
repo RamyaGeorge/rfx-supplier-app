@@ -9,6 +9,7 @@ import { SubmissionsPage } from "./SubmissionsPage";
 import { ClarificationsPage } from "./ClarificationsPage";
 import { NotificationsPage } from "./NotificationsPage";
 import { BidWorkspace } from "./BidWorkspace";
+import { NdaModal } from "./NdaModal";
 import { useStore } from "./store";
 
 function Topbar() {
@@ -115,6 +116,7 @@ export function PortalShell() {
           <PageContent />
         </main>
       </div>
+      <NdaModal />
     </div>
   );
 }
