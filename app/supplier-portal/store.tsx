@@ -36,6 +36,7 @@ interface StoreState {
   openTenderClarif: (tenderId: number) => void;
   setBidStep: (s: number) => void;
   acceptInvite: (id: number) => void;
+  declineInvite: (id: number) => void;
   signNda: (id: number) => void;
   dismissNdaModal: () => void;
   ackDoc: (name: string) => void;
@@ -107,6 +108,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setNdaModalTenderId(null);
     setTenders((prev) =>
       prev.map((t) => (t.id === id ? { ...t, nda_signed: true, my_status: "ACCEPTED" } : t))
+    );
+  };
+
+  const declineInvite = (id: number) => {
+    setTenders((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, my_status: "WITHDRAWN" } : t))
     );
   };
 
@@ -191,6 +198,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         openTenderClarif,
         setBidStep,
         acceptInvite,
+        declineInvite,
         signNda,
         dismissNdaModal,
         ackDoc,
