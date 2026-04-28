@@ -68,7 +68,8 @@ function StatusBadge({ tender }: { tender: Tender }) {
 }
 
 function TenderCard({ tender }: { tender: Tender }) {
-  const { openTender, openTenderClarif, acceptInvite, clarifications } = useStore();
+  const { openTender, openTenderClarif, acceptInvite, declineInvite, clarifications } = useStore();
+  const [confirmDecline, setConfirmDecline] = React.useState(false);
 
   const tClarifs = clarifications.filter((c) => c.tender_id === tender.id);
   const pendingQ = tClarifs.filter((c) => c.status === "PENDING" && c.isMine).length;
@@ -155,7 +156,7 @@ function TenderCard({ tender }: { tender: Tender }) {
               <Button
                 variant="danger"
                 size="sm"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); setConfirmDecline(true); }}
               >
                 Decline
               </Button>
@@ -209,6 +210,32 @@ function TenderCard({ tender }: { tender: Tender }) {
           </div>
         )}
       </CardContent>
+
+      {confirmDecline && (
+        <div
+          className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-[2px] rounded-[inherit]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="bg-white border border-black/10 rounded-xl shadow-lg px-5 py-4 mx-4 w-full max-w-sm">
+            <div className="text-[13.5px] font-semibold text-slate-900 mb-1">Decline invitation?</div>
+            <p className="text-[12px] text-slate-500 mb-4">
+              You will be removed from <span className="font-medium text-slate-700">{tender.title}</span>. This action cannot be undone.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button size="sm" variant="default" onClick={() => setConfirmDecline(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                onClick={() => { setConfirmDecline(false); declineInvite(tender.id); }}
+              >
+                Yes, decline
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

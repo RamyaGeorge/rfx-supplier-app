@@ -16,7 +16,35 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useStore } from "./store";
-import { qSections, tenderDocuments, fmtAmount, TenderType } from "./data";
+import { qSections, tenderDocuments, fmtAmount, TenderType, QuestionOption } from "./data";
+import {
+  exportQuestionnaireToExcel,
+  importQuestionnaireFromExcel,
+  exportBidMatrixToExcel,
+  importBidMatrixFromExcel,
+} from "./excel-utils";
+function isVisible(q: QuestionOption, answers: Record<string, string>, uploads: Record<string, boolean>): boolean {
+  if (!q.condition) return true;
+  const { questionId, matchValue } = q.condition;
+  const parentAnswer = answers[questionId] ?? (uploads[questionId] ? "uploaded" : "");
+  if (Array.isArray(matchValue)) return matchValue.includes(parentAnswer);
+  return parentAnswer === matchValue;
+}
+
+function calcScores(answers: Record<string, string>, uploads: Record<string, boolean>) {
+  let earned = 0;
+  let total = 0;
+  for (const sec of qSections) {
+    for (const q of sec.questions) {
+      if (!q.scored || !q.weight) continue;
+      if (!isVisible(q, answers, uploads)) continue;
+      total += q.weight;
+      const answered = q.type === "FILE_UPLOAD" ? !!uploads[q.id] : !!answers[q.id]?.trim();
+      if (answered) earned += q.weight;
+    }
+  }
+  return { earned, total };
+}
 
 const typeTagClasses: Record<TenderType, string> = {
   RFI: "bg-indigo-50 text-indigo-700",
@@ -85,9 +113,6 @@ function AwardScreen() {
 
 /* ─── Step 0: Documents ─────────────────────────────────────── */
 function DocsStep() {
-  const { ackedDocs, ackDoc } = useStore();
-  const allAcked = tenderDocuments.filter((d) => d.ack_req).every((d) => ackedDocs[d.name]);
-
   const docColors: Record<string, string> = {
     RFX_DOCUMENT: "bg-blue-50 text-blue-700",
     NDA: "bg-red-50 text-red-700",
@@ -98,64 +123,30 @@ function DocsStep() {
   return (
     <Card>
       <CardContent className="p-5">
-        {allAcked ? (
-          <div className="flex items-start gap-2 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[12px] text-emerald-700 mb-4">
-            <CheckCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-            All required documents acknowledged — you can proceed to the questionnaire.
-          </div>
-        ) : (
-          <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-[12px] text-amber-700 mb-4">
-            <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-            Please acknowledge the NDA and Terms & Conditions before submitting your bid.
-          </div>
-        )}
-
         <CardTitle className="mb-3">Tender documents</CardTitle>
 
         <div className="divide-y divide-slate-100">
-          {tenderDocuments.map((doc) => {
-            const acked = ackedDocs[doc.name];
-            return (
-              <div key={doc.name} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                <div
-                  className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-                    docColors[doc.type] ?? "bg-slate-100 text-slate-500"
-                  )}
-                >
-                  <Download className="w-3.5 h-3.5" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-[12.5px] font-medium text-slate-900">{doc.name}</div>
-                  <div className="text-[11px] text-slate-500">
-                    {doc.type.replace(/_/g, " ")} · {doc.size}
-                  </div>
-                </div>
-                <Button size="sm" className="mr-2">
-                  <Download className="w-3 h-3" /> Download
-                </Button>
-                {doc.ack_req ? (
-                  <button
-                    onClick={() => ackDoc(doc.name)}
-                    className={cn(
-                      "flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer",
-                      acked
-                        ? "bg-emerald-50 border-emerald-300 text-emerald-700"
-                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                    )}
-                  >
-                    {acked ? (
-                      <><CheckCircle className="w-2.5 h-2.5" /> Acknowledged</>
-                    ) : (
-                      "Acknowledge"
-                    )}
-                  </button>
-                ) : (
-                  <span className="text-[11px] text-slate-300">No ack. needed</span>
+          {tenderDocuments.map((doc) => (
+            <div key={doc.name} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+              <div
+                className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                  docColors[doc.type] ?? "bg-slate-100 text-slate-500"
                 )}
+              >
+                <Download className="w-3.5 h-3.5" />
               </div>
-            );
-          })}
+              <div className="flex-1">
+                <div className="text-[12.5px] font-medium text-slate-900">{doc.name}</div>
+                <div className="text-[11px] text-slate-500">
+                  {doc.type.replace(/_/g, " ")} · {doc.size}
+                </div>
+              </div>
+              <Button size="sm">
+                <Download className="w-3 h-3" /> Download
+              </Button>
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>
@@ -165,10 +156,18 @@ function DocsStep() {
 /* ─── Step 1: Questionnaire ────────────────────────────────── */
 function QuestionnaireStep() {
   const { selectedOptions, uploadedFiles, toggleUpload, selectOpt } = useStore();
-  const answeredCount =
-    Object.keys(uploadedFiles).length + Object.keys(selectedOptions).length + 1;
-  const totalQ = qSections.reduce((s, sec) => s + sec.questions.length, 0);
-  const pct = Math.round((answeredCount / totalQ) * 100);
+
+  const visibleQuestions = qSections.flatMap((sec) =>
+    sec.questions.filter((q) => isVisible(q, selectedOptions, uploadedFiles))
+  );
+  const answeredCount = visibleQuestions.filter(
+    (q) => (q.type === "FILE_UPLOAD" ? uploadedFiles[q.id] : selectedOptions[q.id]?.trim())
+  ).length;
+  const totalQ = visibleQuestions.length;
+  const pct = totalQ > 0 ? Math.round((answeredCount / totalQ) * 100) : 0;
+
+  const { earned: scoreEarned, total: scoreTotal } = calcScores(selectedOptions, uploadedFiles);
+  const scorePct = scoreTotal > 0 ? Math.round((scoreEarned / scoreTotal) * 100) : 0;
 
   const sectionTypeClasses: Record<string, string> = {
     TECHNICAL: "bg-emerald-50 text-emerald-700",
@@ -180,10 +179,36 @@ function QuestionnaireStep() {
   const circumference = 2 * Math.PI * 16;
   const offset = circumference - (pct / 100) * circumference;
 
+  const allQuestions = qSections.flatMap((sec) => sec.questions);
+
+  const handleExport = async () => {
+    await exportQuestionnaireToExcel(qSections, visibleQuestions, selectedOptions);
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await importQuestionnaireFromExcel(file, allQuestions, selectOpt);
+      e.target.value = ""; // reset input
+    }
+  };
+
   return (
     <>
-      {/* Completion bar */}
-      <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-lg px-4 py-3 mb-4">
+      <div className="flex justify-end gap-2 mb-4">
+        <Button variant="outline" size="sm" onClick={handleExport}>
+          <Download className="w-3.5 h-3.5 mr-1" /> Export to Excel
+        </Button>
+        <label>
+          <input type="file" accept=".xlsx" className="hidden" onChange={handleImport} />
+          <Button variant="outline" size="sm" asChild>
+            <span><Upload className="w-3.5 h-3.5 mr-1" /> Import from Excel</span>
+          </Button>
+        </label>
+      </div>
+
+      {/* Completion + Score bar */}
+      <div className="flex items-center gap-4 bg-slate-50 border border-slate-100 rounded-lg px-4 py-3 mb-4">
         <svg className="w-9 h-9 flex-shrink-0 -rotate-90" viewBox="0 0 36 36">
           <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
           <circle
@@ -199,8 +224,12 @@ function QuestionnaireStep() {
             Questionnaire {pct}% complete
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">
-            {Object.keys(selectedOptions).length} answered · {Object.keys(uploadedFiles).length} uploaded
+            {answeredCount} of {totalQ} questions answered
           </div>
+        </div>
+        <div className="border-l border-slate-200 pl-4 text-right">
+          <div className="text-[12.5px] font-semibold text-emerald-700">{scoreEarned} / {scoreTotal} pts</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Technical score {scorePct}%</div>
         </div>
       </div>
 
@@ -213,8 +242,10 @@ function QuestionnaireStep() {
 
           <div className="flex flex-col gap-3">
             {qSections.map((sec) => {
-              const answered = sec.questions.filter(
-                (q) => selectedOptions[q.id] || uploadedFiles[q.id]
+              const secVisible = sec.questions.filter((q) => isVisible(q, selectedOptions, uploadedFiles));
+              if (secVisible.length === 0) return null;
+              const answered = secVisible.filter(
+                (q) => (q.type === "FILE_UPLOAD" ? uploadedFiles[q.id] : selectedOptions[q.id]?.trim())
               ).length;
               return (
                 <div key={sec.id} className="border border-slate-100 rounded-xl overflow-hidden">
@@ -228,18 +259,21 @@ function QuestionnaireStep() {
                         <span className="text-[10px] text-red-600 font-medium">Required</span>
                       )}
                     </div>
-                    <span className="text-[11px] text-slate-400">{answered}/{sec.questions.length} answered</span>
+                    <span className="text-[11px] text-slate-400">{answered}/{secVisible.length} answered</span>
                   </div>
 
                   <div className="divide-y divide-slate-100">
-                    {sec.questions.map((q) => (
-                      <div key={q.id} className="px-4 py-3.5">
+                    {secVisible.map((q) => (
+                      <div key={q.id} className={cn("px-4 py-3.5", q.condition && "bg-slate-50/60 border-l-2 border-indigo-200")}>
                         <div className="flex items-center gap-2 flex-wrap mb-1">
+                          {q.condition && (
+                            <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-medium">Conditional</span>
+                          )}
                           <span className="text-[12.5px] font-medium text-slate-900">{q.text}</span>
                           {q.mandatory && <span className="text-red-500 text-[13px]">*</span>}
                           {q.scored && (
                             <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-full font-medium">
-                              Scored {q.weight}%
+                              Scored {q.weight} pts
                             </span>
                           )}
                         </div>
@@ -367,11 +401,34 @@ function LineItemsStep() {
   const { bidItems, updateBidItem } = useStore();
   const total = bidItems.reduce((s, it) => s + parseFloat(it.unit_price || "0") * it.quantity, 0);
 
+  const handleExport = async () => {
+    await exportBidMatrixToExcel(bidItems);
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await importBidMatrixFromExcel(file, bidItems, updateBidItem);
+      e.target.value = ""; // reset input
+    }
+  };
+
   return (
     <Card>
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-4">
           <CardTitle>Line item pricing (BOQ)</CardTitle>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="w-3.5 h-3.5 mr-1" /> Export to Excel
+            </Button>
+            <label>
+              <input type="file" accept=".xlsx" className="hidden" onChange={handleImport} />
+              <Button variant="outline" size="sm" asChild>
+                <span><Upload className="w-3.5 h-3.5 mr-1" /> Import from Excel</span>
+              </Button>
+            </label>
+          </div>
         </div>
 
         <div className="flex items-start gap-2 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-lg text-[12px] text-blue-700 mb-4">
@@ -499,77 +556,216 @@ function LineItemsStep() {
 
 /* ─── Step 3: Review & submit ──────────────────────────────── */
 function ReviewStep() {
-  const { activeTender, ackedDocs, bidItems, selectedOptions, uploadedFiles, goTo } = useStore();
+  const { activeTender, bidItems, selectedOptions, uploadedFiles, goTo } = useStore();
   const t = activeTender;
 
   const isRFI = t.type === "RFI";
-  const allAcked = tenderDocuments.filter((d) => d.ack_req).every((d) => ackedDocs[d.name]);
   const allPriced = isRFI || bidItems.every((it) => parseFloat(it.unit_price || "0") > 0);
-  const answeredQ = Object.keys(uploadedFiles).length + Object.keys(selectedOptions).length + 1;
-  const totalQ = qSections.reduce((s, sec) => s + sec.questions.length, 0);
-  const compPct = Math.round((answeredQ / totalQ) * 100);
   const totalBid = bidItems.reduce((s, it) => s + parseFloat(it.unit_price || "0") * it.quantity, 0);
 
+  const visibleQuestions = qSections.flatMap((sec) =>
+    sec.questions.filter((q) => isVisible(q, selectedOptions, uploadedFiles))
+  );
+  const answeredQ = visibleQuestions.filter(
+    (q) => (q.type === "FILE_UPLOAD" ? uploadedFiles[q.id] : selectedOptions[q.id]?.trim())
+  ).length;
+  const totalQ = visibleQuestions.length;
+  const compPct = totalQ > 0 ? Math.round((answeredQ / totalQ) * 100) : 0;
+
+  const { earned: scoreEarned, total: scoreTotal } = calcScores(selectedOptions, uploadedFiles);
+  const scorePct = scoreTotal > 0 ? Math.round((scoreEarned / scoreTotal) * 100) : 0;
+
   const checks = [
-    { ok: allAcked, msg: allAcked ? "All required documents acknowledged" : "NDA and Terms & Conditions must be acknowledged" },
     { ok: compPct >= 80, msg: compPct >= 80 ? `Questionnaire ${compPct}% complete` : `Questionnaire incomplete — mandatory questions unanswered (${compPct}%)` },
     ...(!isRFI ? [{ ok: allPriced, msg: allPriced ? `All ${bidItems.length} line items priced` : "One or more line items not priced" }] : []),
     { ok: true, msg: "Bid validity set (90 days)" },
   ];
   const allOk = checks.every((c) => c.ok);
 
-  return (
-    <Card>
-      <CardContent className="p-5">
-        {allOk ? (
-          <div className="flex items-start gap-2 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[12px] text-emerald-700 mb-4">
-            <CheckCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-            <div><strong>Ready to submit.</strong> All checks passed. Once submitted, your bid is sealed and cannot be edited.</div>
-          </div>
-        ) : (
-          <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-[12px] text-amber-700 mb-4">
-            <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
-            <div><strong>Bid not ready.</strong> Please complete the items below before submitting.</div>
-          </div>
-        )}
+  const sectionTypeClasses: Record<string, string> = {
+    TECHNICAL: "bg-emerald-50 text-emerald-700",
+    GENERAL: "bg-indigo-50 text-indigo-700",
+    HSE: "bg-amber-50 text-amber-700",
+    COMPLIANCE: "bg-red-50 text-red-700",
+  };
 
-        <CardTitle className="mb-3">Response summary</CardTitle>
-        <div className="border border-slate-100 rounded-lg overflow-hidden mb-5">
-          {[
-            ["Tender", t.title],
-            ["Event number", t.number],
-            ...(!isRFI ? [
-              ["Total bid amount", fmtAmount(totalBid)],
-              ["Line items", `${bidItems.length} items`],
-              ["Financial envelope", "Sealed until 15 Oct 2025"],
-            ] : []),
-            ["Bid validity", "90 days"],
-            ["Questionnaire", `${compPct}% complete`],
-          ].map(([k, v]) => (
-            <div key={k} className="flex px-3.5 py-2.5 border-b border-slate-100 last:border-0 text-[12.5px]">
-              <div className="text-slate-500 w-44 flex-shrink-0">{k}</div>
-              <div className={cn("font-medium", k === "Total bid amount" ? "text-emerald-700 text-[16px]" : "text-slate-900")}>
-                {v}
+  return (
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardContent className="p-5">
+          {allOk ? (
+            <div className="flex items-start gap-2 px-3 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[12px] text-emerald-700 mb-4">
+              <CheckCircle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+              <div><strong>Ready to submit.</strong> All checks passed. Once submitted, your bid is sealed and cannot be edited.</div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-[12px] text-amber-700 mb-4">
+              <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />
+              <div><strong>Bid not ready.</strong> Please complete the items below before submitting.</div>
+            </div>
+          )}
+
+          <CardTitle className="mb-3">Response summary</CardTitle>
+          <div className="border border-slate-100 rounded-lg overflow-hidden mb-5">
+            {[
+              ["Tender", t.title],
+              ["Event number", t.number],
+              ...(!isRFI ? [
+                ["Total bid amount", fmtAmount(totalBid)],
+                ["Line items", `${bidItems.length} items`],
+                ["Financial envelope", "Sealed until 15 Oct 2025"],
+              ] : []),
+              ["Bid validity", "90 days"],
+              ["Questionnaire", `${compPct}% complete (${answeredQ}/${totalQ} questions)`],
+            ].map(([k, v]) => (
+              <div key={k} className="flex px-3.5 py-2.5 border-b border-slate-100 last:border-0 text-[12.5px]">
+                <div className="text-slate-500 w-44 flex-shrink-0">{k}</div>
+                <div className={cn("font-medium", k === "Total bid amount" ? "text-emerald-700 text-[16px]" : "text-slate-900")}>
+                  {v}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <CardTitle className="mb-3">Pre-submission checklist</CardTitle>
+          <div className="divide-y divide-slate-100">
+            {checks.map((c, i) => (
+              <div key={i} className="flex items-center gap-2.5 py-2.5 text-[12.5px]">
+                {c.ok ? (
+                  <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" strokeWidth={2.2} />
+                ) : (
+                  <X className="w-3.5 h-3.5 text-red-600 flex-shrink-0" strokeWidth={2.2} />
+                )}
+                <span className={c.ok ? "text-slate-800" : "text-red-600"}>{c.msg}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Evaluation & Scoring ─────────────────────────────── */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <CardTitle>Evaluation &amp; Scoring</CardTitle>
+            <div className="flex items-center gap-2">
+              <div className="text-right">
+                <div className="text-[18px] font-bold text-emerald-700 leading-none">{scoreEarned}<span className="text-[13px] font-normal text-slate-400"> / {scoreTotal} pts</span></div>
+                <div className="text-[11px] text-slate-400 mt-0.5">Technical score</div>
+              </div>
+              <div className="w-12 h-12 relative flex items-center justify-center">
+                <svg className="w-12 h-12 -rotate-90 absolute inset-0" viewBox="0 0 48 48">
+                  <circle cx="24" cy="24" r="20" fill="none" stroke="#e2e8f0" strokeWidth="4" />
+                  <circle
+                    cx="24" cy="24" r="20" fill="none"
+                    stroke="#1DB886" strokeWidth="4"
+                    strokeDasharray={2 * Math.PI * 20}
+                    strokeDashoffset={2 * Math.PI * 20 * (1 - scorePct / 100)}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="text-[11px] font-bold text-slate-700 z-10">{scorePct}%</span>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
 
-        <CardTitle className="mb-3">Pre-submission checklist</CardTitle>
-        <div className="divide-y divide-slate-100">
-          {checks.map((c, i) => (
-            <div key={i} className="flex items-center gap-2.5 py-2.5 text-[12.5px]">
-              {c.ok ? (
-                <CheckCircle className="w-3.5 h-3.5 text-green-600 flex-shrink-0" strokeWidth={2.2} />
-              ) : (
-                <X className="w-3.5 h-3.5 text-red-600 flex-shrink-0" strokeWidth={2.2} />
-              )}
-              <span className={c.ok ? "text-slate-800" : "text-red-600"}>{c.msg}</span>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+          <div className="flex items-start gap-2 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-lg text-[12px] text-blue-700 mb-4">
+            <Info className="w-3 h-3 flex-shrink-0 mt-0.5" />
+            Conditional questions are shown only when triggered by a parent answer. Their points are included in your score only when applicable.
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {qSections.map((sec) => {
+              const secScored = sec.questions.filter((q) => q.scored && q.weight);
+              if (secScored.length === 0) return null;
+              const secEarned = secScored
+                .filter((q) => isVisible(q, selectedOptions, uploadedFiles))
+                .filter((q) => (q.type === "FILE_UPLOAD" ? uploadedFiles[q.id] : selectedOptions[q.id]?.trim()))
+                .reduce((s, q) => s + (q.weight ?? 0), 0);
+              const secTotal = secScored
+                .filter((q) => isVisible(q, selectedOptions, uploadedFiles))
+                .reduce((s, q) => s + (q.weight ?? 0), 0);
+
+              return (
+                <div key={sec.id} className="border border-slate-100 rounded-xl overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[12.5px] font-semibold text-slate-800">{sec.title}</span>
+                      <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded tracking-wide", sectionTypeClasses[sec.type] ?? "bg-slate-100 text-slate-500")}>
+                        {sec.type}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full transition-all"
+                          style={{ width: secTotal > 0 ? `${Math.round((secEarned / secTotal) * 100)}%` : "0%" }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-medium text-slate-600 tabular-nums">{secEarned}/{secTotal} pts</span>
+                    </div>
+                  </div>
+
+                  <div className="divide-y divide-slate-100">
+                    {secScored.map((q) => {
+                      const visible = isVisible(q, selectedOptions, uploadedFiles);
+                      const answered = visible && (q.type === "FILE_UPLOAD" ? !!uploadedFiles[q.id] : !!selectedOptions[q.id]?.trim());
+                      const pts = q.weight ?? 0;
+
+                      return (
+                        <div key={q.id} className={cn("flex items-start gap-3 px-4 py-3", !visible && "opacity-40")}>
+                          <div className={cn(
+                            "w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
+                            !visible ? "bg-slate-100" : answered ? "bg-emerald-100" : "bg-amber-50"
+                          )}>
+                            {!visible ? (
+                              <Lock className="w-2.5 h-2.5 text-slate-400" />
+                            ) : answered ? (
+                              <CheckCircle className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <AlertTriangle className="w-3 h-3 text-amber-500" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {q.condition && (
+                                <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-medium">Conditional</span>
+                              )}
+                              <span className="text-[12.5px] text-slate-800">{q.text}</span>
+                            </div>
+                            {q.condition && (
+                              <div className="text-[11px] text-slate-400 mt-0.5">
+                                {visible
+                                  ? `Triggered — answer: "${Array.isArray(q.condition.matchValue) ? q.condition.matchValue.join(" / ") : q.condition.matchValue}"`
+                                  : `Not triggered (requires: ${Array.isArray(q.condition.matchValue) ? q.condition.matchValue.join(" or ") : q.condition.matchValue})`}
+                              </div>
+                            )}
+                            {visible && !answered && (
+                              <div className="text-[11px] text-amber-600 mt-0.5">Not yet answered — {pts} pts at stake</div>
+                            )}
+                          </div>
+                          <div className={cn(
+                            "text-[12px] font-semibold tabular-nums flex-shrink-0",
+                            !visible ? "text-slate-300" : answered ? "text-emerald-700" : "text-slate-300"
+                          )}>
+                            {!visible ? `— / ${pts}` : answered ? `+${pts}` : `0 / ${pts}`}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-[12.5px]">
+            <span className="font-semibold text-slate-700">Total technical score</span>
+            <span className="font-bold text-emerald-700">{scoreEarned} / {scoreTotal} pts ({scorePct}%)</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -582,7 +778,6 @@ export function BidWorkspace() {
     goTo,
     openTenderClarif,
     clarifications,
-    ackedDocs,
     uploadedFiles,
     selectedOptions,
     bidItems,
@@ -599,11 +794,15 @@ export function BidWorkspace() {
 
   const totalBid = bidItems.reduce((s, it) => s + parseFloat(it.unit_price || "0") * it.quantity, 0);
   const tClarifs = clarifications.filter((c) => c.tender_id === t.id);
-  const ndaAcked = ackedDocs["NDA_Agreement.pdf"];
 
-  const answeredQ = Object.keys(uploadedFiles).length + Object.keys(selectedOptions).length + 1;
-  const totalQ = qSections.reduce((s, sec) => s + sec.questions.length, 0);
-  const compPct = Math.round((answeredQ / totalQ) * 100);
+  const visibleQs = qSections.flatMap((sec) =>
+    sec.questions.filter((q) => isVisible(q, selectedOptions, uploadedFiles))
+  );
+  const answeredQ = visibleQs.filter(
+    (q) => (q.type === "FILE_UPLOAD" ? uploadedFiles[q.id] : selectedOptions[q.id]?.trim())
+  ).length;
+  const totalQ = visibleQs.length;
+  const compPct = totalQ > 0 ? Math.round((answeredQ / totalQ) * 100) : 0;
 
   const statusVariant =
     t.my_status === "INVITED" ? "invited" : t.my_status === "ACCEPTED" ? "accepted" : "submitted";
@@ -655,16 +854,6 @@ export function BidWorkspace() {
             )}
           </div>
         </div>
-
-        {/* NDA gate */}
-        {t.nda_required && !ndaAcked && (
-          <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-red-50 border border-red-200 rounded-lg text-[12px] text-red-700 mb-4">
-            <Lock className="w-3.5 h-3.5 flex-shrink-0" />
-            <div>
-              <strong>NDA acknowledgement required</strong> — You must acknowledge the NDA before accessing specifications or submitting a bid.
-            </div>
-          </div>
-        )}
 
         {/* Corrigendum notice */}
         <div className="flex items-start gap-2 px-3.5 py-2.5 bg-amber-50 border border-amber-200 rounded-lg text-[12px] text-amber-700 mb-4">
@@ -742,11 +931,10 @@ export function BidWorkspace() {
 }
 
 function SubmitButton({ compPct }: { compPct: number }) {
-  const { activeTender, ackedDocs, bidItems, goTo } = useStore();
+  const { activeTender, bidItems, goTo } = useStore();
   const [submitted, setSubmitted] = React.useState(false);
 
   const isRFI = activeTender.type === "RFI";
-  const allAcked = tenderDocuments.filter((d) => d.ack_req).every((d) => ackedDocs[d.name]);
   const allPriced = isRFI || bidItems.every((it) => parseFloat(it.unit_price || "0") > 0);
 
   const handleSubmit = () => {
