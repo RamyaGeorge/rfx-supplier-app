@@ -151,7 +151,8 @@ function TenderCard({ tender }: { tender: Tender }) {
                 size="sm"
                 onClick={(e) => { e.stopPropagation(); acceptInvite(tender.id); }}
               >
-                <CheckCircle className="w-3 h-3" /> Accept invite
+                <CheckCircle className="w-3 h-3" />
+                {tender.intent_req ? "Declare intent to participate" : "Accept invite"}
               </Button>
               <Button
                 variant="danger"
@@ -217,9 +218,14 @@ function TenderCard({ tender }: { tender: Tender }) {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="bg-white border border-black/10 rounded-xl shadow-lg px-5 py-4 mx-4 w-full max-w-sm">
-            <div className="text-[13.5px] font-semibold text-slate-900 mb-1">Decline invitation?</div>
+            <div className="text-[13.5px] font-semibold text-slate-900 mb-1">
+              {tender.intent_req ? "Decline to participate?" : "Decline invitation?"}
+            </div>
             <p className="text-[12px] text-slate-500 mb-4">
-              You will be removed from <span className="font-medium text-slate-700">{tender.title}</span>. This action cannot be undone.
+              {tender.intent_req
+                ? <>You will signal non-participation in <span className="font-medium text-slate-700">{tender.title}</span>. The buyer will be notified.</>
+                : <>You will be removed from <span className="font-medium text-slate-700">{tender.title}</span>. This action cannot be undone.</>
+              }
             </p>
             <div className="flex gap-2 justify-end">
               <Button size="sm" variant="default" onClick={() => setConfirmDecline(false)}>

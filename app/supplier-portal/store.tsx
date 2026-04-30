@@ -100,7 +100,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setTenders((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, my_status: "ACCEPTED" } : t))
+      prev.map((t) =>
+        t.id === id
+          ? { ...t, my_status: "ACCEPTED", intent_declared: t.intent_req ? true : t.intent_declared }
+          : t
+      )
     );
   };
 
