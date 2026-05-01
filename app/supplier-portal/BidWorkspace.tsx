@@ -60,7 +60,7 @@ function TypeTag({ type }: { type: TenderType }) {
   );
 }
 
-const ALL_STEPS = ["Documents", "Questionnaire", "Line items", "Review & submit"];
+const ALL_STEPS = ["Documents", "Questionnaire", "Bid Matrix", "Review & submit"];
 const RFI_STEPS = ["Documents", "Questionnaire", "Review & submit"];
 
 /* ─── Award screen ─────────────────────────────────────────── */
@@ -417,7 +417,7 @@ function LineItemsStep() {
     <Card>
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-4">
-          <CardTitle>Line item pricing (BOQ)</CardTitle>
+          <CardTitle>Bid Matrix (BOQ)</CardTitle>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="w-3.5 h-3.5 mr-1" /> Export to Excel
@@ -577,7 +577,7 @@ function ReviewStep() {
 
   const checks = [
     { ok: compPct >= 80, msg: compPct >= 80 ? `Questionnaire ${compPct}% complete` : `Questionnaire incomplete — mandatory questions unanswered (${compPct}%)` },
-    ...(!isRFI ? [{ ok: allPriced, msg: allPriced ? `All ${bidItems.length} line items priced` : "One or more line items not priced" }] : []),
+    ...(!isRFI ? [{ ok: allPriced, msg: allPriced ? `All ${bidItems.length} bid matrix items priced` : "One or more bid matrix items not priced" }] : []),
     { ok: true, msg: "Bid validity set (90 days)" },
   ];
   const allOk = checks.every((c) => c.ok);
@@ -612,7 +612,7 @@ function ReviewStep() {
               ["Event number", t.number],
               ...(!isRFI ? [
                 ["Total bid amount", fmtAmount(totalBid)],
-                ["Line items", `${bidItems.length} items`],
+                ["Bid Matrix", `${bidItems.length} items`],
                 ["Financial envelope", "Sealed until 15 Oct 2025"],
               ] : []),
               ["Bid validity", "90 days"],
@@ -822,7 +822,7 @@ export function BidWorkspace() {
                   statusVariant === "invited" ? "bg-indigo-50 text-indigo-700" :
                   statusVariant === "accepted" ? "bg-emerald-50 text-emerald-700" : "bg-green-100 text-green-700"
                 )}>
-                  {t.my_status}
+                  {t.intent_req && t.my_status === "ACCEPTED" ? "Intent declared" : t.my_status}
                 </span>
               </div>
               <h2 className="text-[16px] font-semibold text-slate-900 tracking-tight mb-0.5">{t.title}</h2>
