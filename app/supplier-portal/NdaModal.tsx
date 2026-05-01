@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
-import { FileText, Shield, X } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, FileText, Shield, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "./store";
 
 export function NdaModal() {
-  const { ndaModalTenderId, tenders, signNda, dismissNdaModal } = useStore();
+  const { ndaModalTenderId, tenders, signNda, declineNda, dismissNdaModal } = useStore();
   const [agreed, setAgreed] = useState(false);
+  const [showDecline, setShowDecline] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
 
   if (ndaModalTenderId === null) return null;
 
@@ -22,10 +24,20 @@ export function NdaModal() {
 
   const handleDismiss = () => {
     setAgreed(false);
+    setShowDecline(false);
+    setDeclineReason("");
     dismissNdaModal();
   };
 
+  const handleDeclineSubmit = () => {
+    if (!declineReason.trim()) return;
+    declineNda(ndaModalTenderId, declineReason.trim());
+    setShowDecline(false);
+    setDeclineReason("");
+  };
+
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
         {/* Header */}
@@ -127,6 +139,9 @@ export function NdaModal() {
           <Button variant="default" size="sm" onClick={handleDismiss}>
             Cancel
           </Button>
+          <Button variant="danger" size="sm" onClick={() => setShowDecline(true)}>
+            Don&apos;t Accept
+          </Button>
           <Button variant="primary" size="sm" disabled={!agreed} onClick={handleSign}>
             <Shield className="w-3.5 h-3.5" />
             Accept &amp; proceed
@@ -134,5 +149,50 @@ export function NdaModal() {
         </div>
       </div>
     </div>
+
+    {/* Decline reason popup */}
+    {showDecline && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-black/8">
+            <div className="flex items-center gap-2 text-red-600">
+              <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+              </div>
+              <span className="text-[13.5px] font-semibold text-slate-900">Reason for not accepting</span>
+            </div>
+            <button
+              onClick={() => { setShowDecline(false); setDeclineReason(""); }}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="px-5 py-4 space-y-3">
+            <p className="text-[12px] text-slate-500 leading-relaxed">
+              Please provide a reason for declining the NDA. This will be sent to the procurement team at{" "}
+              <strong className="text-slate-700">{tender.buyer}</strong>.
+            </p>
+            <textarea
+              autoFocus
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              rows={4}
+              placeholder="e.g. The confidentiality terms are too broad for our organisation…"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[12px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-300 resize-none"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-black/8 bg-slate-50/60">
+            <Button variant="default" size="sm" onClick={() => { setShowDecline(false); setDeclineReason(""); }}>
+              Back
+            </Button>
+            <Button variant="danger" size="sm" disabled={!declineReason.trim()} onClick={handleDeclineSubmit}>
+              Submit &amp; decline
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   );
 }

@@ -38,6 +38,7 @@ interface StoreState {
   acceptInvite: (id: number) => void;
   declineInvite: (id: number) => void;
   signNda: (id: number) => void;
+  declineNda: (id: number, reason: string) => void;
   dismissNdaModal: () => void;
   ackDoc: (name: string) => void;
   toggleUpload: (qid: string) => void;
@@ -115,6 +116,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setTenders((prev) =>
       prev.map((t) => (t.id === id ? { ...t, my_status: "WITHDRAWN" } : t))
     );
+  };
+
+  const declineNda = (id: number, reason: string) => {
+    setNdaModalTenderId(null);
+    setTenders((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, my_status: "WITHDRAWN" } : t))
+    );
+    const tender = tenders.find((t) => t.id === id);
+    const adminNotif: Notification = {
+      id: Date.now(),
+      key: `nda_declined_${id}`,
+      text: `[Admin Alert] ${tender?.buyer ?? "Buyer"} – NDA declined for ${tender?.number ?? "tender"}. Reason: ${reason}`,
+      time: "Just now",
+      read: false,
+      tender_id: id,
+    };
+    setNotifications((prev) => [adminNotif, ...prev]);
   };
 
   const dismissNdaModal = () => setNdaModalTenderId(null);
@@ -200,6 +218,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         acceptInvite,
         declineInvite,
         signNda,
+        declineNda,
         dismissNdaModal,
         ackDoc,
         toggleUpload,
