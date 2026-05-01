@@ -342,16 +342,22 @@ export async function importBidMatrixFromExcel(
     const index = bidItems.findIndex((b) => b.id.toString() === id);
     if (index === -1) return;
 
-    const unitPrice = row.getCell(6).value?.toString() || "";
-    const leadTime = row.getCell(7).value?.toString() || "";
-    const brand = row.getCell(8).value?.toString() || "";
-    const modelNo = row.getCell(9).value?.toString() || "";
-    const country = row.getCell(10).value?.toString() || "";
+    const cellVal = (col: number) => {
+      const v = row.getCell(col).value;
+      if (v === null || v === undefined) return null;
+      return v.toString().trim();
+    };
 
-    if (unitPrice !== undefined) updateBidItem(index, "unit_price", unitPrice);
-    if (leadTime !== undefined) updateBidItem(index, "lead_time_days", leadTime);
-    if (brand !== undefined) updateBidItem(index, "brand", brand);
-    if (modelNo !== undefined) updateBidItem(index, "model_no", modelNo);
-    if (country !== undefined) updateBidItem(index, "country_of_origin", country);
+    const unitPrice = cellVal(6);
+    const leadTime  = cellVal(7);
+    const brand     = cellVal(8);
+    const modelNo   = cellVal(9);
+    const country   = cellVal(10);
+
+    if (unitPrice !== null) updateBidItem(index, "unit_price", unitPrice);
+    if (leadTime  !== null) updateBidItem(index, "lead_time_days", leadTime);
+    if (brand     !== null) updateBidItem(index, "brand", brand);
+    if (modelNo   !== null) updateBidItem(index, "model_no", modelNo);
+    if (country   !== null) updateBidItem(index, "country_of_origin", country);
   });
 }

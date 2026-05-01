@@ -463,7 +463,7 @@ function LineItemsStep() {
                     <td className="px-2.5 py-2">
                       <input
                         type="number"
-                        defaultValue={it.unit_price}
+                        value={it.unit_price}
                         className="w-24 px-2 py-1 border border-slate-200 rounded text-[12px] text-right focus:outline-none focus:border-emerald-500"
                         onChange={(e) => updateBidItem(i, "unit_price", e.target.value)}
                       />
@@ -474,28 +474,28 @@ function LineItemsStep() {
                     <td className="px-2.5 py-2">
                       <input
                         type="number"
-                        defaultValue={it.lead_time_days}
+                        value={it.lead_time_days}
                         className="w-16 px-2 py-1 border border-slate-200 rounded text-[12px] text-center focus:outline-none focus:border-emerald-500"
                         onChange={(e) => updateBidItem(i, "lead_time_days", e.target.value)}
                       />
                     </td>
                     <td className="px-2.5 py-2">
                       <input
-                        defaultValue={it.brand}
+                        value={it.brand}
                         className="w-20 px-2 py-1 border border-slate-200 rounded text-[12px] focus:outline-none focus:border-emerald-500"
                         onChange={(e) => updateBidItem(i, "brand", e.target.value)}
                       />
                     </td>
                     <td className="px-2.5 py-2">
                       <input
-                        defaultValue={it.model_no}
+                        value={it.model_no}
                         className="w-24 px-2 py-1 border border-slate-200 rounded text-[12px] focus:outline-none focus:border-emerald-500"
                         onChange={(e) => updateBidItem(i, "model_no", e.target.value)}
                       />
                     </td>
                     <td className="px-2.5 py-2">
                       <select
-                        defaultValue={it.country_of_origin}
+                        value={it.country_of_origin}
                         className="w-16 px-1.5 py-1 border border-slate-200 rounded text-[12px] focus:outline-none focus:border-emerald-500"
                         onChange={(e) => updateBidItem(i, "country_of_origin", e.target.value)}
                       >
